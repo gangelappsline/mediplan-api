@@ -12,8 +12,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Passport\AccessToken;
 use Laravel\Passport\Token;
-use League\OAuth2\Server\Entities\AccessTokenEntityInterface;
 
 class AuthController extends Controller
 {
@@ -90,16 +90,10 @@ class AuthController extends Controller
     {
         $accessToken = $request->user()->currentAccessToken();
 
-        // The guard assigns an OAuth2 entity built from the JWT (not the
-        // Eloquent model), so its identifier is used to revoke the token.
-        $tokenId = match (true) {
-            $accessToken instanceof Token => $accessToken->getKey(),
-            $accessToken instanceof AccessTokenEntityInterface => $accessToken->getIdentifier(),
-            default => null,
-        };
-
-        if (is_string($tokenId) && $tokenId !== '') {
-            Token::query()->whereKey($tokenId)->update(['revoked' => true]);
+        // The guard assigns a Passport AccessToken built from the JWT claims
+        // (not the Eloquent model); both classes expose revoke().
+        if ($accessToken instanceof Token || $accessToken instanceof AccessToken) {
+            $accessToken->revoke();
         }
 
         return response()->json([
