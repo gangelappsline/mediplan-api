@@ -12,7 +12,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Laravel\Passport\AccessToken;
 use Laravel\Passport\Token;
 
 class AuthController extends Controller
@@ -88,11 +87,11 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
-        $accessToken = $request->user()->currentAccessToken();
+        $accessToken = $request->user()->token();
 
-        // The guard assigns a Passport AccessToken built from the JWT claims
-        // (not the Eloquent model); both classes expose revoke().
-        if ($accessToken instanceof Token || $accessToken instanceof AccessToken) {
+        // The Passport guard assigns the Eloquent Token model to the user,
+        // which exposes revoke(). Transient tokens have nothing to revoke.
+        if ($accessToken instanceof Token) {
             $accessToken->revoke();
         }
 

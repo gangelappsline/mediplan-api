@@ -1,6 +1,6 @@
 # MediPlan API
 
-API construida con **Laravel 13** y autenticación OAuth2 con **Laravel Passport**.
+API construida con **Laravel 12** y autenticación OAuth2 con **Laravel Passport**.
 
 Módulos incluidos por el momento:
 
@@ -16,7 +16,7 @@ Módulos incluidos por el momento:
 
 ## Requisitos
 
-- PHP 8.3 o superior (extensiones: `openssl`, `pdo`, `mbstring`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`)
+- PHP 8.2 o superior (extensiones: `openssl`, `pdo`, `mbstring`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`)
 - Composer 2
 - SQLite (desarrollo) o MySQL 8 (producción)
 - OpenSSL (para generar las llaves de Passport)
