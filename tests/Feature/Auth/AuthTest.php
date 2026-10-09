@@ -6,6 +6,7 @@ use App\Enums\RoleName;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Laravel\Passport\ClientRepository;
 use Tests\TestCase;
@@ -166,10 +167,14 @@ class AuthTest extends TestCase
             'revoked' => true,
         ]);
 
+        // Drop the guard cached by the previous call so the token is revalidated.
+        Auth::forgetGuards();
+
         // The revoked token must no longer work.
         $this->getJson('/api/me', [
             'Authorization' => 'Bearer '.$token,
-        ])->assertUnauthorized();
+        ])->assertUnauthorized()
+            ->assertJsonPath('message', 'No autenticado.');
     }
 
     public function test_me_returns_the_authenticated_user(): void
