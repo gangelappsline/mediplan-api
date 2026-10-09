@@ -22,7 +22,7 @@ class AuthTest extends TestCase
         $this->seed(RoleSeeder::class);
 
         // Passport requires a personal access client to issue tokens.
-        app(ClientRepository::class)->createPersonalAccessGrantClient('MediPlan Test', 'users');
+        app(ClientRepository::class)->createPersonalAccessClient(null, 'MediPlan Test', 'http://localhost');
     }
 
     public function test_user_can_register_as_client(): void
