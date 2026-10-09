@@ -48,4 +48,12 @@ jobs:
         run: php artisan passport:keys --force
 
       - name: Execute tests
-        run: php artisan test
+        run: |
+          php artisan test > /tmp/test-output.txt 2>&1 || code=$?
+          code=${code:-0}
+          echo "TEST_EXIT_CODE=$code"
+          if [ "$code" -ne 0 ]; then
+            msg=$(tail -n 45 /tmp/test-output.txt | sed -r 's/\x1B\[[0-9;]*[mK]//g' | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error::$msg"
+          fi
+          exit $code
