@@ -11,14 +11,48 @@ use Tests\TestCase;
 
 class SwaggerDocumentationTest extends TestCase
 {
+    /**
+     * Contenido previo de la especificación, para no borrar la documentación
+     * que el desarrollador ya tenía generada en local.
+     *
+     * @var array<string, string|null>
+     */
+    private array $previousSpecification = [];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        foreach ($this->specificationPaths() as $path) {
+            $this->previousSpecification[$path] = File::exists($path) ? File::get($path) : null;
+        }
+    }
+
     protected function tearDown(): void
     {
-        File::delete([
-            storage_path('api-docs/api-docs.json'),
-            storage_path('api-docs/api-docs.yaml'),
-        ]);
+        foreach ($this->previousSpecification as $path => $contents) {
+            if ($contents === null) {
+                File::delete($path);
+
+                continue;
+            }
+
+            File::ensureDirectoryExists(dirname($path));
+            File::put($path, $contents);
+        }
 
         parent::tearDown();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function specificationPaths(): array
+    {
+        return [
+            storage_path('api-docs/api-docs.json'),
+            storage_path('api-docs/api-docs.yaml'),
+        ];
     }
 
     public function test_openapi_documentation_describes_every_api_endpoint(): void
