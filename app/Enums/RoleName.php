@@ -80,4 +80,21 @@ enum RoleName: string
     {
         return array_map(fn (self $role) => $role->value, self::cases());
     }
+
+    /**
+     * Valores aceptados por la API: inglés (base de datos) y español.
+     *
+     * @return array<int, string>
+     */
+    public static function acceptableInputs(): array
+    {
+        $values = [];
+
+        foreach (self::cases() as $case) {
+            $values[] = $case->value;
+            $values[] = $case->spanishSlug();
+        }
+
+        return $values;
+    }
 }

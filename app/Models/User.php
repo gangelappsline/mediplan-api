@@ -7,6 +7,8 @@ use App\Enums\RoleName;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\HasApiTokens;
@@ -24,7 +26,9 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone',
         'password',
+        'is_active',
     ];
 
     /**
@@ -47,7 +51,38 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Negocio del que el usuario es propietario (rol business).
+     *
+     * @return HasOne<Business, $this>
+     */
+    public function business(): HasOne
+    {
+        return $this->hasOne(Business::class);
+    }
+
+    /**
+     * Registros de cliente vinculados a la cuenta en los distintos negocios.
+     *
+     * @return HasMany<Client, $this>
+     */
+    public function clientProfiles(): HasMany
+    {
+        return $this->hasMany(Client::class);
+    }
+
+    /**
+     * Citas asociadas a la cuenta del usuario.
+     *
+     * @return HasMany<Appointment, $this>
+     */
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
     }
 
     /**

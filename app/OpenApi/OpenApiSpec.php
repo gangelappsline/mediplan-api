@@ -53,6 +53,54 @@ DESCRIPTION,
             name: 'Autenticación',
             description: 'Registro, inicio de sesión, cierre de sesión y consulta del usuario actual.',
         ),
+        new OA\Tag(
+            name: 'Panel del negocio',
+            description: 'Indicadores del negocio autenticado (rol negocio).',
+        ),
+        new OA\Tag(
+            name: 'Clientes del negocio',
+            description: 'Directorio de clientes del negocio autenticado (rol negocio).',
+        ),
+        new OA\Tag(
+            name: 'Leads del negocio',
+            description: 'Embudo de leads del negocio autenticado (rol negocio).',
+        ),
+        new OA\Tag(
+            name: 'Agenda del negocio',
+            description: 'Calendario y citas del negocio autenticado (rol negocio).',
+        ),
+        new OA\Tag(
+            name: 'Configuración del negocio',
+            description: 'Perfil y configuración operativa del negocio autenticado (rol negocio).',
+        ),
+        new OA\Tag(
+            name: 'Panel del cliente',
+            description: 'Indicadores de la cuenta del usuario cliente (rol cliente).',
+        ),
+        new OA\Tag(
+            name: 'Citas del cliente',
+            description: 'Citas asociadas a la cuenta del usuario cliente (rol cliente).',
+        ),
+        new OA\Tag(
+            name: 'Panel de administración',
+            description: 'Indicadores globales de la plataforma (rol administrador).',
+        ),
+        new OA\Tag(
+            name: 'Usuarios (administración)',
+            description: 'Alta, edición, roles, activación y baja de usuarios (rol administrador).',
+        ),
+        new OA\Tag(
+            name: 'Negocios (administración)',
+            description: 'Listado, edición, moderación y baja de negocios (rol administrador).',
+        ),
+        new OA\Tag(
+            name: 'Leads (administración)',
+            description: 'Supervisión de solo lectura de los leads de todos los negocios (rol administrador).',
+        ),
+        new OA\Tag(
+            name: 'Roles (administración)',
+            description: 'Catálogo de roles de la plataforma (rol administrador).',
+        ),
     ],
 )]
 #[OA\SecurityScheme(
