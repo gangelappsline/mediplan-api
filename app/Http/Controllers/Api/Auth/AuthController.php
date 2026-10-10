@@ -16,6 +16,7 @@ use App\OpenApi\Schemas\MessageResponse;
 use App\OpenApi\Schemas\RegisterRequest as RegisterRequestSchema;
 use App\OpenApi\Schemas\UnauthenticatedError;
 use App\OpenApi\Schemas\ValidationError;
+use App\Services\Businesses\BusinessProvisioner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -76,10 +77,15 @@ class AuthController extends Controller
             $role = RoleName::coerce($data['role']);
             $user->assignRole($role);
 
+            // Todo negocio necesita su ficha y su configuración inicial.
+            if ($role === RoleName::Business) {
+                app(BusinessProvisioner::class)->provisionFor($user);
+            }
+
             return $user;
         });
 
-        $user->load('roles');
+        $user->load(['roles', 'business']);
 
         $token = $user->createToken('auth_token')->accessToken;
 
@@ -124,6 +130,11 @@ class AuthController extends Controller
                 content: new OA\JsonContent(ref: InvalidCredentialsError::class),
             ),
             new OA\Response(
+                response: 403,
+                description: 'La cuenta existe pero un administrador la desactivó.',
+                content: new OA\JsonContent(ref: InvalidCredentialsError::class),
+            ),
+            new OA\Response(
                 response: 422,
                 description: 'El cuerpo no contiene un correo válido o falta un campo requerido.',
                 content: new OA\JsonContent(ref: ValidationError::class),
@@ -146,7 +157,13 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $user->load('roles');
+        if (! $user->is_active) {
+            return response()->json([
+                'message' => 'Tu cuenta está desactivada. Contacta al administrador de la plataforma.',
+            ], 403);
+        }
+
+        $user->load(['roles', 'business']);
 
         $token = $user->createToken('auth_token')->accessToken;
 
@@ -241,7 +258,7 @@ class AuthController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $user->load('roles');
+        $user->load(['roles', 'business']);
 
         return response()->json([
             'message' => 'Usuario autenticado.',

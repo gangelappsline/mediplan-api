@@ -70,6 +70,54 @@ class AuthTest extends TestCase
         $this->assertTrue($user->hasRole(RoleName::Business));
     }
 
+    public function test_registering_as_business_creates_its_business_and_settings(): void
+    {
+        $this->postJson('/api/register', [
+            'name' => 'Cafetería Central',
+            'email' => 'contacto@cafeteria.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'negocio',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.user.business.name', 'Cafetería Central')
+            ->assertJsonPath('data.user.business.status.name', 'active');
+
+        /** @var User $user */
+        $user = User::query()->where('email', 'contacto@cafeteria.com')->first();
+
+        $this->assertDatabaseHas('businesses', [
+            'user_id' => $user->getKey(),
+            'name' => 'Cafetería Central',
+        ]);
+        $this->assertDatabaseHas('business_settings', [
+            'business_id' => $user->business->getKey(),
+            'appointment_duration_minutes' => 30,
+        ]);
+    }
+
+    public function test_me_includes_the_business_of_a_business_user(): void
+    {
+        $this->postJson('/api/register', [
+            'name' => 'Cafetería Central',
+            'email' => 'contacto@cafeteria.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'negocio',
+        ])->assertCreated();
+
+        $token = $this->postJson('/api/login', [
+            'email' => 'contacto@cafeteria.com',
+            'password' => 'password123',
+        ])->json('data.token');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/me')
+            ->assertOk()
+            ->assertJsonPath('data.user.business.name', 'Cafetería Central')
+            ->assertJsonPath('data.user.is_active', true);
+    }
+
     public function test_user_cannot_register_as_admin(): void
     {
         $response = $this->postJson('/api/register', [
