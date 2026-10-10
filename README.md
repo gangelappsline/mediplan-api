@@ -9,6 +9,7 @@ Módulos incluidos por el momento:
 - **Logout** (`POST /api/logout`)
 - **Usuario autenticado** (`GET /api/me`)
 - **Roles**: cliente, negocio y administrador
+- **Documentación Swagger/OpenAPI** (`GET /api/documentation` y `GET /docs`)
 
 > Convención del proyecto: la **base de datos está en inglés** (`roles`, `role_user`, `client`, `business`, `admin`) y todos los **mensajes, errores y validaciones están en español**.
 
@@ -50,7 +51,10 @@ php artisan passport:client --personal --name="MediPlan" --provider=users
 # 8. Poblar roles y usuarios iniciales
 php artisan db:seed
 
-# 9. Levantar el servidor
+# 9. Generar el documento OpenAPI que consume Swagger UI
+php artisan l5-swagger:generate
+
+# 10. Levantar el servidor
 php artisan serve
 ```
 
@@ -75,6 +79,117 @@ DB_PORT=3306
 DB_DATABASE=mediplan
 DB_USERNAME=root
 DB_PASSWORD=secreto
+```
+
+---
+
+## Documentación Swagger / OpenAPI
+
+La API publica una especificación **OpenAPI 3.0.0** generada con `darkaonline/l5-swagger`. La especificación contiene las rutas, los campos obligatorios, formatos, valores permitidos, ejemplos, respuestas de error y el esquema de autenticación Bearer.
+
+### URLs disponibles
+
+Con el servidor levantado en `http://localhost:8000`:
+
+| Recurso | URL | Uso |
+|----------|-----|-----|
+| Swagger UI | `http://localhost:8000/api/documentation` | Explorar endpoints y ejecutar solicitudes desde el navegador. |
+| Especificación JSON | `http://localhost:8000/docs` | Importar en otro servicio, Postman, Insomnia, Redoc o un generador de SDK/frontend. |
+| Especificación YAML | `storage/api-docs/api-docs.yaml` | Archivo generado si `L5_SWAGGER_GENERATE_YAML_COPY=true`; útil para versionarlo o consumirlo desde CI. |
+
+El archivo JSON/YAML se genera con:
+
+```bash
+php artisan l5-swagger:generate
+```
+
+Después de cambiar una anotación o un contrato, vuelve a ejecutar el comando. En desarrollo se puede regenerar automáticamente en cada visita con `L5_SWAGGER_GENERATE_ALWAYS=true`; no se recomienda activarlo en producción. El directorio `storage/api-docs` debe ser escribible por el proceso de PHP.
+
+### Instrucciones para integrar un frontend u otro servicio
+
+1. Define `API_BASE_URL` como `http://localhost:8000/api` en local o como la URL pública equivalente en cada entorno.
+2. Para registro o login envía `Content-Type: application/json` y `Accept: application/json`.
+3. Lee el token de `data.token` y el prefijo de `data.token_type` de la respuesta `201` o `200`.
+4. En cada solicitud protegida agrega `Authorization: Bearer <data.token>` y conserva `Accept: application/json`.
+5. Llama a `GET /me` al iniciar o recuperar una sesión para hidratar el usuario actual.
+6. Ante `401`, elimina el token local y redirige al login. Ante `422`, procesa `errors` por nombre de campo y muestra el primer mensaje de cada arreglo. Ante `403`, muestra el mensaje de permisos sin reintentar automáticamente.
+7. Después de `POST /logout`, elimina el token local aunque la API ya lo haya revocado.
+
+Ejemplo mínimo de cliente JavaScript:
+
+```js
+const API_BASE_URL = 'http://localhost:8000/api';
+
+async function login(email, password) {
+  const response = await fetch(`${API_BASE_URL}/login`, {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const body = await response.json();
+  if (!response.ok) throw body;
+
+  localStorage.setItem('access_token', body.data.token);
+  return body.data.user;
+}
+
+async function getCurrentUser() {
+  const token = localStorage.getItem('access_token');
+  const response = await fetch(`${API_BASE_URL}/me`, {
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (response.status === 401) {
+    localStorage.removeItem('access_token');
+    return null;
+  }
+
+  return (await response.json()).data.user;
+}
+```
+
+> En producción usa HTTPS y un mecanismo de almacenamiento de tokens adecuado para tu arquitectura. No envíes contraseñas ni tokens a logs, analytics o URLs.
+
+### Reglas de campos resumidas
+
+| Campo | Tipo | Obligatorio | Reglas |
+|-------|------|-------------|--------|
+| `name` | string | Registro: sí | Entre 1 y 255 caracteres. |
+| `email` | string/email | Registro y login: sí | Debe ser un correo válido; en registro no puede existir previamente. Máximo 255 caracteres en registro. |
+| `password` | string | Registro y login: sí | Registro: mínimo 8 caracteres. Login: cadena no vacía. |
+| `password_confirmation` | string | Registro: sí | Debe coincidir exactamente con `password`; mínimo 8 caracteres. |
+| `role` | string | Registro: sí | Solo `cliente` o `negocio`. `administrador`, `admin` y cualquier otro valor son rechazados. |
+
+Los roles devueltos en `data.user.roles[].name` están en inglés (`client`, `business`, `admin`) y `data.user.roles[].label` es la etiqueta en español (`Cliente`, `Negocio`, `Administrador`). El campo `role` de registro, en cambio, recibe los slugs en español.
+
+### Formato de errores
+
+Los errores de validación responden `422 Unprocessable Entity` con este formato. Un campo puede tener varios mensajes:
+
+```json
+{
+  "message": "Este correo electrónico ya está registrado.",
+  "errors": {
+    "email": ["Este correo electrónico ya está registrado."]
+  }
+}
+```
+
+Los errores de autenticación responden `401` y los errores de permisos de rutas futuras protegidas por el middleware `role` responden `403`:
+
+```json
+{ "message": "No autenticado." }
+```
+
+```json
+{ "message": "No tienes permiso para realizar esta acción." }
 ```
 
 ---
@@ -107,7 +222,9 @@ Respuesta `201 Created`:
       "id": 1,
       "name": "Juan Pérez",
       "email": "juan@example.com",
-      "roles": [{ "name": "client", "label": "Cliente" }]
+      "email_verified_at": null,
+      "roles": [{ "name": "client", "label": "Cliente" }],
+      "created_at": "2026-10-10T15:30:00.000000Z"
     },
     "token": "eyJ0eXAiOiJKV1QiLCJhbGciOi...",
     "token_type": "Bearer"
@@ -130,7 +247,14 @@ Respuesta `200 OK`:
 {
   "message": "Sesión iniciada correctamente.",
   "data": {
-    "user": { "...": "..." },
+    "user": {
+      "id": 1,
+      "name": "Juan Pérez",
+      "email": "juan@example.com",
+      "email_verified_at": null,
+      "roles": [{ "name": "client", "label": "Cliente" }],
+      "created_at": "2026-10-10T15:30:00.000000Z"
+    },
     "token": "eyJ0eXAiOiJKV1QiLCJhbGciOi...",
     "token_type": "Bearer"
   }
@@ -161,7 +285,9 @@ Revoca el token actual. Requiere cabecera `Authorization: Bearer <token>`.
       "id": 1,
       "name": "Juan Pérez",
       "email": "juan@example.com",
-      "roles": [{ "name": "client", "label": "Cliente" }]
+      "email_verified_at": null,
+      "roles": [{ "name": "client", "label": "Cliente" }],
+      "created_at": "2026-10-10T15:30:00.000000Z"
     }
   }
 }
@@ -237,6 +363,7 @@ app/
 │   ├── Requests/Auth/              # RegisterRequest, LoginRequest (validación en español)
 │   └── Resources/UserResource.php
 ├── Models/                         # User (HasApiTokens + roles), Role
+├── OpenApi/                        # metadatos, schemas y operaciones Swagger
 └── Providers/AppServiceProvider.php  # expiración de tokens Passport
 database/
 ├── migrations/                     # users, roles, role_user, oauth_*
